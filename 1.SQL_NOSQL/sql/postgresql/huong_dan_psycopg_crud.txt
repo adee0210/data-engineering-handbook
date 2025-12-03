@@ -1,0 +1,112 @@
+# Hướng dẫn CRUD và thao tác bảng với psycopg
+
+## 1. Kết nối PostgreSQL bằng psycopg
+```python
+import psycopg
+
+conn = psycopg.connect("postgresql://le_duc:ducle1610@localhost:5432/dl_ckvn", autocommit=True)
+```
+
+## 2. Tạo bảng
+```python
+with conn.cursor() as cur:
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS my_table (
+            id SERIAL PRIMARY KEY,
+            name TEXT,
+            age INT,
+            data JSONB
+        )
+    """)
+```
+
+## 3. Thêm cột vào bảng
+```python
+with conn.cursor() as cur:
+    cur.execute("ALTER TABLE my_table ADD COLUMN email TEXT;")
+```
+
+## 4. Xóa cột khỏi bảng
+```python
+with conn.cursor() as cur:
+    cur.execute("ALTER TABLE my_table DROP COLUMN email;")
+```
+
+## 5. Thêm dữ liệu (INSERT)
+```python
+with conn.cursor() as cur:
+    cur.execute("INSERT INTO my_table (name, age, data) VALUES (%s, %s, %s)", ("Alice", 30, '{"score": 100}'))
+```
+
+## 6. Đọc dữ liệu (SELECT)
+```python
+with conn.cursor() as cur:
+    cur.execute("SELECT * FROM my_table ORDER BY age DESC")
+    rows = cur.fetchall()
+    for row in rows:
+        print(row)
+```
+
+## 7. Sửa dữ liệu (UPDATE)
+```python
+with conn.cursor() as cur:
+    cur.execute("UPDATE my_table SET age = %s WHERE name = %s", (31, "Alice"))
+```
+
+## 8. Xóa dữ liệu (DELETE)
+```python
+with conn.cursor() as cur:
+    cur.execute("DELETE FROM my_table WHERE name = %s", ("Alice",))
+```
+
+## 9. Tạo index
+```python
+with conn.cursor() as cur:
+    cur.execute("CREATE INDEX idx_age ON my_table(age)")
+```
+
+## 10. Sắp xếp dữ liệu
+```python
+with conn.cursor() as cur:
+    cur.execute("SELECT * FROM my_table ORDER BY name ASC")
+    rows = cur.fetchall()
+    for row in rows:
+        print(row)
+```
+
+## 11. Xóa bảng
+```python
+with conn.cursor() as cur:
+    cur.execute("DROP TABLE IF EXISTS my_table")
+```
+
+## 12. Tạo bảng với phân vùng (Partition Table)
+
+# Tạo bảng cha (partitioned table)
+with conn.cursor() as cur:
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS my_partitioned_table (
+            id SERIAL PRIMARY KEY,
+            name TEXT,
+            created_at DATE
+        ) PARTITION BY RANGE (created_at);
+    """)
+
+# Tạo các bảng con (partition) theo từng khoảng thời gian
+with conn.cursor() as cur:
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS my_partitioned_table_2023 PARTITION OF my_partitioned_table
+        FOR VALUES FROM ('2023-01-01') TO ('2024-01-01');
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS my_partitioned_table_2024 PARTITION OF my_partitioned_table
+        FOR VALUES FROM ('2024-01-01') TO ('2025-01-01');
+    """)
+
+---
+**Lưu ý:**
+- Thay đổi tên bảng, cột, dữ liệu cho phù hợp với dự án của bạn.
+- Luôn đóng kết nối sau khi thao tác xong:
+```python
+conn.close()
+```

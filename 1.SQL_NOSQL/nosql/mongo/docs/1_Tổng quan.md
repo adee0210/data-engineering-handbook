@@ -16,6 +16,7 @@
 
 ## 3. Khi nào nên và không dùng
 ### a) Trường hợp điển hình nên dùng
+- Rất tốt cho data có cấu trúc 
 - Schema thay đổi nhiều, phải ALTER TABLE(quá trình thêm sửa xóa , thay đổi dịnh dạng data cho cột trong bảng)
 - Nhiều trường mang giá trị NULL làm bảng phình to, tốn storage, query chậm
 - Rất nhiều cột, trong khi cột có cột không hoặc thiết kế trước siêu bảng tới hàng trăm cột
@@ -30,9 +31,9 @@
 
 - Lưu sẵn tất cả các data trong 1 doc, cần cho read(1 truy vấn đơn duy nhất để lấy toàn bộ data thay vì join) do cơ chế tải đọc lớn denormalize. 
 ### b) Không nên dùng
-- Không phù hợp với dữ liệu đúng tuyệt đối tại 1 thời điểm khi nhiều người người thao tác cùng lúc. VD: Cả 2 mua máy, khi đọc thấy hàng còn 5 cái. khi cả 2 cùng đặt mua thì người kia hiển thị 5 - 1 = 4 , người này cũng hiển thị 5 - 1 = 4 trong khi phải là 3 => không đúng
+- Không sử dụng khi cân ACID  tuyệt đối, join quá nhiều bảng, có nhiều thao tác cùng lúc(VD: 2 người cùng lúc mua 1 món đồ nhưng chỉ còn số lượng là 1. Không có cơ chế chặn nào ở đây cả, cả 2 đều hiển thị là mua mà không còn báo số là bao nhiêu, sau đó lượng món đồ đó giảm -1)
 
-- Mặc dù có Trasanction nhưng hiệu năng kém so với SQL
+- Mặc dù có Trasanction (đã được cải thiện) nhưng hiệu năng kém so với SQL
 
 - Hạn chế RAM, do lưu data và index trên disk khi query sẽ load index và data vào ram (cơ chế WiredTiger) => nếu data không nằm trong ram sẽ đọc từ disk sẽ rất chậm. Khi 1 instance nhỏ (máy ít RAM) mà index chiếm nhiều RAM sẽ chậm
 
