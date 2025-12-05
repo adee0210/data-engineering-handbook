@@ -236,6 +236,159 @@ driver.quit()
 - Đóng tab cũ nếu mở tab mới: `driver.close()` rồi `driver.switch_to.window(driver.window_handles[0])`
 - Theo dõi memory usage để tránh crash khi crawl nhiều.
 
+### Quản lý tab chi tiết (Tab Management)
+Để quản lý tab hiệu quả hơn, đặc biệt khi crawl song song, bạn có thể sử dụng các phương thức sau:
+
+#### Mở tab mới
+```python
+# Mở tab trống mới
+driver.execute_script("window.open('');")
+
+# Hoặc mở tab với URL cụ thể
+driver.execute_script("window.open('https://example.com', '_blank');")
+```
+
+#### Chuyển đổi giữa các tab
+```python
+# Lấy danh sách tất cả window handles
+handles = driver.window_handles
+
+# Chuyển sang tab đầu tiên
+driver.switch_to.window(handles[0])
+
+# Chuyển sang tab cuối cùng (tab mới nhất)
+driver.switch_to.window(handles[-1])
+
+# Chuyển sang tab theo index với kiểm tra
+def switch_to_tab_by_index(driver, index):
+    handles = driver.window_handles
+    if 0 <= index < len(handles):
+        driver.switch_to.window(handles[index])
+        return True
+    else:
+        print(f"Index {index} out of range. Available tabs: {len(handles)}")
+        return False
+
+# Ví dụ sử dụng
+switch_to_tab_by_index(driver, 2)  # Chuyển sang tab thứ 3
+
+# Hoặc chuyển theo URL (nếu biết)
+def switch_to_tab_by_url(driver, partial_url):
+    for handle in driver.window_handles:
+        driver.switch_to.window(handle)
+        if partial_url in driver.current_url:
+            return True
+    return False
+
+switch_to_tab_by_url(driver, "google.com")
+```
+
+#### Đóng tab hiện tại
+```python
+# Đóng tab hiện tại và chuyển về tab trước đó
+current_index = driver.window_handles.index(driver.current_window_handle)
+driver.close()
+if driver.window_handles:
+    # Chuyển về tab trước đó nếu có
+    prev_index = max(0, current_index - 1)
+    driver.switch_to.window(driver.window_handles[prev_index])
+```
+
+#### Ví dụ hoàn chỉnh: Crawl với quản lý tab thông minh
+```python
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+# Khởi tạo driver
+driver = webdriver.Chrome(service=service, options=chrome_options)
+
+# Danh sách URLs
+urls = ["https://site1.com", "https://site2.com", "https://site3.com"]
+
+# Dictionary để theo dõi tab cho mỗi URL
+tab_map = {}
+
+# Mở tab đầu tiên
+driver.get(urls[0])
+tab_map[urls[0]] = driver.current_window_handle
+WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+
+# Mở các tab còn lại
+for url in urls[1:]:
+    driver.execute_script(f"window.open('{url}', '_blank');")
+    driver.switch_to.window(driver.window_handles[-1])
+    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+    tab_map[url] = driver.current_window_handle
+
+# Thu thập data từ tất cả tab
+all_data = {}
+for url, handle in tab_map.items():
+    driver.switch_to.window(handle)
+    data = driver.find_element("tag name", "body").text
+    all_data[url] = data[:100] + "..."
+    print(f"Data from {url}: {all_data[url]}")
+
+# Đóng các tab phụ, giữ lại tab chính
+main_handle = tab_map[urls[0]]
+for handle in driver.window_handles:
+    if handle != main_handle:
+        driver.switch_to.window(handle)
+        driver.close()
+
+# Quay về tab chính
+driver.switch_to.window(main_handle)
+# Có thể tiếp tục sử dụng tab chính hoặc đóng driver
+driver.quit()
+```
+
+**Lưu ý quan trọng:**
+- Sử dụng dictionary để map URL với window handle giúp quản lý dễ dàng.
+- Mở tab trực tiếp với URL thay vì mở trống rồi get.
+- Luôn switch trước khi thao tác trên tab.
+- Giữ lại một tab chính để tránh lỗi khi đóng tất cả.
+
+#### Ví dụ khác: Crawl tuần tự với tab tạm thời (giống logic SeleniumUtil)
+Nếu muốn xử lý từng URL một cách tuần tự, mở tab mới cho mỗi URL, lấy data và đóng ngay:
+
+```python
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+# Khởi tạo driver với tab chính
+driver = webdriver.Chrome(service=service, options=chrome_options)
+driver.get("about:blank")  # Tab chính trống
+
+# Danh sách URLs
+urls = ["https://site1.com", "https://site2.com", "https://site3.com"]
+
+all_data = {}
+for url in urls:
+    # Mở tab mới cho URL này
+    driver.execute_script("window.open('');")
+    driver.switch_to.window(driver.window_handles[-1])
+    
+    # Load URL và lấy data
+    driver.get(url)
+    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+    data = driver.find_element("tag name", "body").text
+    all_data[url] = data[:100] + "..."
+    print(f"Data from {url}: {all_data[url]}")
+    
+    # Đóng tab hiện tại và chuyển về tab chính
+    driver.close()
+    driver.switch_to.window(driver.window_handles[0])
+
+# Đóng driver sau khi xong
+driver.quit()
+```
+
+**Lưu ý:**
+- Cách này tiết kiệm memory hơn khi crawl nhiều URL vì chỉ giữ một tab tại một thời điểm.
+- Phù hợp cho việc crawl tuần tự, không song song.
+- Tab chính có thể dùng để tránh lỗi khi đóng tất cả tab.
+
 ## 7. Tài liệu tham khảo
 - Trang chủ: https://www.selenium.dev/
 - API Python: https://selenium-python.readthedocs.io/
