@@ -53,6 +53,82 @@ print(hdfs.get_file_info("/"))
 
 **Lưu ý:** User phải có quyền truy cập thư mục tương ứng trong HDFS.
 
+### 3.5. User và Permissions trong HDFS
+Hiểu đúng về user và permissions rất quan trọng để tránh lỗi "Permission denied".
+
+#### Giải thích output của `hdfs dfs -ls /user`
+Khi chạy lệnh `hdfs dfs -ls /user`, bạn có thể thấy output như:
+```
+Found 1 items
+drwxr-xr-x   - duc supergroup          0 2025-12-10 00:16 /user/duc_le
+```
+
+**Phân tích từng phần:**
+- `drwxr-xr-x`: Permissions (d=rwxr-xr-x, giống Unix)
+- `-`: Không có ACLs
+- `duc`: **Owner** của thư mục (user system thực hiện operation đầu tiên)
+- `supergroup`: Group
+- `0`: Size (bytes)
+- `2025-12-10 00:16`: Modification time
+- `/user/duc_le`: Path
+
+**Quan trọng:** Owner là "duc", không phải "duc_le". Tên thư mục không nhất thiết match với owner!
+
+#### Tại sao dùng user="duc" trong PyArrow?
+- PyArrow yêu cầu user parameter phải match với **owner** của thư mục HDFS
+- Nếu thư mục `/user/duc_le` có owner là "duc", thì trong code phải dùng `user="duc"`
+- Nếu dùng `user="duc_le"`, sẽ gặp lỗi "Permission denied" vì user "duc_le" không sở hữu thư mục
+
+#### Tạo thư mục với đúng owner
+Để tạo thư mục với owner mong muốn:
+```bash
+# Chạy với user cụ thể (cần user tồn tại trong system)
+sudo -u <desired_user> hdfs dfs -mkdir -p /user/<desired_user>
+
+# Hoặc trong Python với user đúng
+hdfs = fs.HadoopFileSystem(host="localhost", port=9000, user="<actual_owner>")
+hdfs.create_dir("/user/<actual_owner>/my_dir")
+```
+
+#### Ví dụ thực tế
+Giả sử output của `hdfs dfs -ls /user` là:
+```
+Found 2 items
+drwxr-xr-x   - duc supergroup          0 2025-12-10 00:34 /user/duc
+drwxr-xr-x   - duc supergroup          0 2025-12-10 00:16 /user/duc_le
+```
+
+**Giải thích:**
+- Cả hai thư mục `/user/duc` và `/user/duc_le` đều có owner là "duc"
+- Bạn có thể dùng `user="duc"` để truy cập cả hai thư mục
+- Tên thư mục không ảnh hưởng đến quyền truy cập, chỉ owner HDFS mới quan trọng
+
+```python
+# Có thể truy cập cả hai thư mục với cùng user
+hdfs = fs.HadoopFileSystem(host="localhost", port=9000, user="duc")
+
+# Truy cập /user/duc
+info_duc = hdfs.get_file_info(fs.FileSelector("/user/duc", recursive=False))
+
+# Truy cập /user/duc_le  
+info_duc_le = hdfs.get_file_info(fs.FileSelector("/user/duc_le", recursive=False))
+```
+
+#### Quyền truy cập của Owner
+**Quan trọng:** Owner của thư mục có quyền **full access** ngay lập tức!
+
+**Ví dụ thực tế về quyền:**
+Giả sử ban đầu chỉ có `/user/duc_le` với owner "duc":
+```
+drwxr-xr-x   - duc supergroup          0 2025-12-10 00:16 /user/duc_le
+```
+
+- User "duc" là owner → có quyền **rwx** (read, write, execute)  
+- Permissions `drwxr-xr-x` = owner=rwx, group=rx, other=rx
+- Vậy user "duc" có thể truy cập `/user/duc_le` ngay từ đầu, **không cần tạo** `/user/duc`
+
+**Kết luận:** Tên thư mục chỉ là label. Quyền truy cập phụ thuộc vào **owner HDFS**. Nếu bạn là owner, bạn có full quyền trên thư mục đó!
+
 ## 4. CRUD Operations cho Thư mục
 
 ### Create (Tạo thư mục)
