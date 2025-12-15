@@ -1,0 +1,15 @@
+các biểu thức truy vấn đều phải ở dạng json trong đó thường có format chung là 
+{},{} : cái đầu tiên sẽ là biểu thức truy vấn, cái thứ 2 sẽ là cột muốn truy vấn. Cả 2 có thể để trống. nhưng khi đưa vào các lệnh thì không được không ghi vào. phải giữ lại 1 cai trống
+nếu chỉ nhập 1 cái trống, thì cái trống đó được hiểu là  lấy cột
+
+1. Biểu thức so sánh
+{cột: {biểu thức so sánh: giá trị so sánh}}
+$eq  bằng 
+$ne không bằng
+$lt nhỏ hơn 
+$lte nhỏ hơn bằng
+$gt lớn hơn
+$gte lớn hợn hoặc bằng
+$in trong danh sách
+$nin không trong danh sách
+
