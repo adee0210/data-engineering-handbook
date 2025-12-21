@@ -2,6 +2,7 @@ các biểu thức truy vấn đều phải ở dạng json trong đó thường
 {},{} : cái đầu tiên sẽ là biểu thức truy vấn, cái thứ 2 sẽ là cột muốn truy vấn. Cả 2 có thể để trống. nhưng khi đưa vào các lệnh thì không được không ghi vào. phải giữ lại 1 cai trống
 nếu chỉ nhập 1 cái trống, thì cái trống đó được hiểu là  lấy cột
 
+
 1. Biểu thức so sánh
 {cột: {biểu thức so sánh: giá trị so sánh}}
 $eq  bằng 
@@ -12,4 +13,72 @@ $gt lớn hơn
 $gte lớn hợn hoặc bằng
 $in trong danh sách
 $nin không trong danh sách
+có thể so sánh datetime: giá trị so sánh để ở dạng datetime()
+
+2. logic
+
+"logic": [
+{biểu thức 1}, {biểu thức 2}, ...
+]
+
+$and : và
+$or: hoặc
+$not: phủ định
+$nor: không cái nào đúng
+
+3. phần từ 
+{"cột":"kiểm tra phần tử"}
+
+$exists: tồn tại
+$type: kiểu dữ liệu
+
+4.chuỗi
+{"cột":{"$regex":pattern},{"$options":""}}
+
+các options: i không phân biệt hoa thường , m: áp dụng cho chuỗi có nhiều dòng , s có thể match cả xuống dòng, chẳng hạn . là match với kí tự sẽ match với \n. có thể kết hợp nhiều option chẳng hạn im , ims , ... 
+
+
+chọn cột ở dấu {} thứ 2: {"cột":0 or 1} 1 là chọn 0 là không chọn. dùng để bật tắt
+
+
+
+II) CÁC HÀM SỬ DỤNG
+1.tìm kiếm
+- find(filter={biểu thức truy vấn},projection={cột muốn lấy}): tìm toàn bộ các doc khớp biểu thức truy vấn trong đó, filter là biểu thức truy vấn còn projection là cột muốn lấy có thể = None. không được mix 1 và 0 (trừ cột _id). giả sử projection= {"age":1},{"name":0} không đúng
+- find_one(): tìm 1 doc khớp
+
+2.distinct("cột"): giống cách làm của set đưa ra các phần tử đã loại bỏ trung lặp
+3. đếm số lượng
+count_documents({biểu thức truy vấn})
+4. sắp xếp
+sort("tên cột":1 or -1)
+
+5. thêm dữ liệu 
+insert_one({doc}):thêm 1 doc có thể thêm ordered=False, nếu data nào bị lỗi trong quá trình insert có thể bỏ qua. do mặc định sẽ là gặp data nào lỗi khi insert chẳng hạn trùng key sẽ dừng luôn
+insert_many([{doc1},{doc2}]): thêm nhiều doc
+
+
+6. update dữ liệu
+
+update_one(
+{"tên cột":"giá trị cột"},"$set":{"tên cột muốn đổi gía trị":giá trị muốn đổi})
+
+update_many() : tương tự update one update nhiều giá tri
+replace_one({"tên cột":"giá trị"}, new doc) : đổi doc có tên cột giá trị này thành doc mới cần thêm {"$setOnInsert": doc}
+có thể thêm upsert=True: nếu tồn tại thì update còn không sẽ là thêm mới 
+
+
+7. xóa dữ liệu
+delete_one({biểu thức truy vấn}): xóa 1 bản ghi
+delete_many({biểu thức truy vấn}): xóa nhiều bản ghi 
+
+
+8. tạo index 
+create_index("cột":1 or -1) 1 là tăng -1 là giảm dần. tạo nhiều index [("cột 1": 1 or -1),("cột 2": 1 or -1)]. có thể thêm unique=True: là duy nhất
+list_indexes(): liệt kê các index
+drop_index("tên cột index"): xóa index có tên là tên cột index
+drop_indexes(): xóa toàn bộ index
+
+	
+
 
